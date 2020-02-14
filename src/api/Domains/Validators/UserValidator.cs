@@ -5,7 +5,7 @@ using API.Domains.Validators.Extensions;
 using FluentValidation;
 using FluentValidation.Results;
 
-namespace API.Domains.Validations
+namespace API.Domains.Validators
 {
     public class UserValidator : AbstractValidator<User>
     {
@@ -30,21 +30,6 @@ namespace API.Domains.Validations
                 .Length(1, 80)
                 .WithErrorCode(((int)Validation.UserNameExceedsLimit).ToString())
                 .WithMessage("User's name length must be between 1 and 80 characters");
-
-            RuleFor(x => x.Email)
-                .NotEmpty()
-                .WithErrorCode(((int)Validation.UserEmailNotInformed).ToString())
-                .WithMessage("User's email must be informed");
-
-            RuleFor(x => x.Email)
-                .Length(1, 80)
-                .WithErrorCode(((int)Validation.UserEmailExceedsLimit).ToString())
-                .WithMessage("User's name length must be between 1 and 80 characters");
-
-            RuleFor(x => x.Email)
-                .ValidEmail()
-                .WithErrorCode(((int)Validation.UserEmailNotValid).ToString())
-                .WithMessage("User's email is not valid");
 
             RuleFor(x => x.Document)
                 .NotEmpty()

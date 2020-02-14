@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using API.Domains.Models;
 using API.Domains.Models.Faults;
@@ -20,24 +21,28 @@ namespace API.Domains.Services
 
     public class UserService : IUserService
     {
-        private readonly ISqlService _sqlService;
-        private readonly IValidator<User> _userValidator;
-        private readonly IValidationService _validationService;
-        private readonly IAuthenticatedService _authenticatedService;
+        private readonly SqlService _sqlService;
+        private readonly IValidator<User> _userValidator; //model validation
+        private readonly IValidationService _validationService; //if something goes unexpected on the business validations
+        private readonly IAuthenticatedService _authenticatedService; //autentication validator (login) (CreatedBy column)
         private readonly ILogger<UserService> _logger;
+        private readonly IContactService _contactService;
         
         public UserService(
              IValidator<User> userValidator,
-             ISqlService sqlService,
+             SqlService sqlService,
              IValidationService validationService,
              IAuthenticatedService authenticatedService,
-             ILogger<UserService> logger) 
+             ILogger<UserService> logger,
+             IContactService contactService
+             )
         {
             _userValidator = userValidator;
             _sqlService = sqlService;
             _validationService = validationService;
             _authenticatedService = authenticatedService;
             _logger = logger;
+            _contactService = contactService;
         }
 
         public async Task<Pagination<User>> ListAsync(int offset, int limit)
@@ -53,18 +58,23 @@ namespace API.Domains.Services
 
             this._logger.LogDebug("Retriving paginated list of users");
 
-            var list = await _sqlService.ListAsync<User>(UserQuery.PAGINATE, new 
+            var users = await _sqlService.ListAsync<User>(UserQuery.PAGINATE, new 
             {
-                CreatedBy = _authenticatedService.Token().Subject,
-                Offset = offset,
-                Limit = limit
+                Limit = limit,
+                CreatedBy = "Renato",
+                Offset = offset
             });
+
+            foreach (var user in users)
+            {
+                user.Contacts = await this._contactService.ListAsync(user.UserId);
+            }
 
             this._logger.LogDebug("Retriving the number of users registered by the authenticated user");
 
             var total = await _sqlService.CountAsync(UserQuery.TOTAL, new 
             {
-                CreatedBy = _authenticatedService.Token().Subject,
+                CreatedBy = "Renato",
             });
 
             this._logger.LogDebug("Retriving the number of users registered by the authenticated user");
@@ -73,7 +83,7 @@ namespace API.Domains.Services
             {
                 Offset = offset,
                 Limit = limit,
-                Items = list,
+                Items = users,
                 Total = total
             };
 
@@ -91,7 +101,7 @@ namespace API.Domains.Services
             var user = await _sqlService.GetAsync<User>(UserQuery.GET, new 
             {
                 Id = id,
-                CreatedBy = _authenticatedService.Token().Subject
+                CreatedBy = "Renato"
             });
 
             this._logger.LogDebug("Checking if user exists");
@@ -102,6 +112,11 @@ namespace API.Domains.Services
 
                 throw new ArgumentNullException(nameof(id));
             }
+
+            this._logger.LogDebug("Retriving the user contacts");
+
+            var contacts = await _contactService.ListAsync(id);
+            user.Contacts = contacts.ToList();
 
             this._logger.LogDebug("Ending GetAsync");
 
@@ -130,33 +145,32 @@ namespace API.Domains.Services
                 this._validationService.Throw("Document", "There is already another user with that document", user.Document, Validation.UserRepeatedDocument);
             }
 
-            this._logger.LogDebug("Checking if that email already exists");
-
-            var existsEmail = await _sqlService.ExistsAsync(UserQuery.EXISTS_EMAIL, new 
-            {
-                Email = user.Email
-            });
-
-            if (existsEmail) 
-            {
-                this._logger.LogDebug("Email already exists, triggering 400");
-
-                this._validationService.Throw("Email", "There is already another user with that email", user.Email, Validation.UserRepeatedEmail);
-            }
-
             this._logger.LogDebug("Inserting new user");
 
-            user.Id = await _sqlService.CreateAsync(UserQuery.INSERT, new 
+            user.UserId = await _sqlService.CreateAsync(UserQuery.INSERT, new 
             {
                 IdProfile = user.Profile,
                 IdCountry = user.Country,
-                CreatedBy = _authenticatedService.Token().Subject,
+                CreatedBy = "Renato",
                 Name = user.Name,
-                Email = user.Email,
                 Document = user.Document,
                 Birthdate = user.Birthdate,
                 Active = user.Active
             });
+
+            this._logger.LogDebug("Checking if there is any email to insert");
+
+
+            if (user.Contacts.Count() > 0) {
+
+                this._logger.LogDebug("Passing the email to be inserted");
+
+                foreach (var contact in user.Contacts)
+                {
+                    contact.UserId = user.UserId;
+                    await this._contactService.CreateAsync(contact);
+                }
+            }
 
             this._logger.LogDebug("Ending CreateAsync");
 
@@ -175,35 +189,19 @@ namespace API.Domains.Services
 
             var oldUser = await GetAsync(id);
 
-            var existsEmail = await _sqlService.ExistsAsync(UserQuery.EXISTS_SAME_EMAIL, new 
-            {
-                Id = oldUser.Id,
-                Email = user.Email
-            });
-
-            this._logger.LogDebug("Checking if that email already exists");
-
-            if (existsEmail) 
-            {
-                this._logger.LogDebug("Email already exists, triggering 400");
-
-                this._validationService.Throw("Email", "There is already another user with that email", user.Email, Validation.UserRepeatedDocument);
-            }
-
             this._logger.LogDebug("Updating user");
 
             await _sqlService.ExecuteAsync(UserQuery.UPDATE, new 
             {
-                Id = oldUser.Id,
+                Id = oldUser.UserId,
                 IdProfile = user.Profile,
                 IdCountry = user.Country,
                 Name = user.Name,
-                Email = user.Email,
                 Birthdate = user.Birthdate,
                 Active = user.Active
             });
 
-            user.Id = oldUser.Id;
+            user.UserId = oldUser.UserId;
 
             this._logger.LogDebug("Ending UpdateAsync");
 
@@ -222,8 +220,8 @@ namespace API.Domains.Services
 
             await _sqlService.ExecuteAsync(UserQuery.DELETE, new 
             {
-                Id = user.Id,
-                CreatedBy = _authenticatedService.Token().Subject
+                Id = user.UserId,
+                CreatedBy = "Renato"
             });
 
             this._logger.LogDebug("Ending DeleteAsync");
@@ -241,9 +239,9 @@ namespace API.Domains.Services
 
             await _sqlService.ExecuteAsync(UserQuery.ACTIVATE_DEACTIVATE, new 
             {
-                Id = user.Id,
+                Id = user.UserId,
                 Active = active,
-                CreatedBy = _authenticatedService.Token().Subject
+                CreatedBy = "Renato"
             });
 
             this._logger.LogDebug("Ending ActivateDeactivateAsync");

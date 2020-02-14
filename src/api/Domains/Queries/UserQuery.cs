@@ -5,50 +5,65 @@ namespace API.Domains.Queries
     public static class UserQuery
     {
         public const string GET = @"
-            SELECT Id,
+            SELECT UserId,
                    IdProfile as Profile,
                    IdCountry as Country,
                    CreatedBy,
                    Name,
-                   Email,
                    Document,
                    Birthdate,
                    Active
-              FROM bootstrap.User
-             WHERE Id = @Id
+              FROM Usuario
+             WHERE UserId = @Id
                AND CreatedBy = @CreatedBy;
         ";
 
         public const string PAGINATE = @"
-            SELECT Id,
-                   IdProfile as Profile,
-                   IdCountry as Country,
-                   CreatedBy,
-                   Name,
-                   Email,
-                   Document,
-                   Birthdate,
-                   Active
-              FROM bootstrap.User
-             WHERE Id > @Offset
-               AND CreatedBy = @CreatedBy
-          ORDER BY ID ASC
-             LIMIT @Limit;
+            SELECT
+                   u.UserId,
+                   u.IdProfile as Profile,
+                   u.IdCountry as Country,
+                   u.CreatedBy,
+                   u.Name,
+                   u.Document,
+                   u.Birthdate,
+                   u.Active
+              FROM Usuario u
+              ORDER BY u.UserId ASC
+              OFFSET(@Offset) ROWS FETCH NEXT (@Limit) ROWS ONLY;
         ";
-        
+
+        public const string PAGINATE_LEFT_JOIN = @"
+            SELECT
+                   u.UserId,
+                   u.IdProfile as Profile,
+                   u.IdCountry as Country,
+                   u.CreatedBy,
+                   u.Name,
+                   u.Document,
+                   u.Birthdate,
+                   u.Active,
+                   c.ContactId,
+                   c.Email,
+                   c.UserId
+              FROM Usuario u
+              LEFT JOIN Contato c ON u.UserId = c.UserId 
+              ORDER BY u.UserId ASC
+              OFFSET(@Offset) ROWS FETCH NEXT (@Limit) ROWS ONLY;
+        ";
+
         public const string TOTAL = @"
             SELECT COUNT(1)
-              FROM bootstrap.User
+              FROM Usuario
              WHERE CreatedBy = @CreatedBy;
         ";
 
         public const string INSERT = @"
-            INSERT INTO bootstrap.User 
+            INSERT INTO Usuario 
                        (IdProfile,
                         IdCountry,
                         CreatedBy,
                         Name,
-                        Email,
                         Document,
                         Birthdate,
                         Active)
@@ -56,54 +71,39 @@ namespace API.Domains.Queries
                         @IdCountry,
                         @CreatedBy,
                         @Name,
-                        @Email,
                         @Document,
                         @Birthdate,
                         @Active);
 
-            SELECT LAST_INSERT_ID();                  
+            SELECT SCOPE_IDENTITY() AS [SCOPE_IDENTITY];               
         ";
         
         public const string UPDATE = @"
-            UPDATE bootstrap.User 
+            UPDATE Usuario 
                SET IdProfile = @IdProfile,
                    IdCountry = @IdCountry,
                    Name = @Name,
-                   Email = @Email,
                    Birthdate = @Birthdate,
                    Active = @Active
-             WHERE Id = @Id;
+             WHERE UserId = @Id;
         ";
 
         public const string DELETE = @"
-            DELETE FROM bootstrap.User
-                  WHERE Id = @Id
+            DELETE FROM Usuario
+                  WHERE UserId = @Id
                     AND CreatedBy = @CreatedBy;
         ";
 
         public const string ACTIVATE_DEACTIVATE = @"
-            UPDATE bootstrap.User 
+            UPDATE Usuario 
                SET Active = @Active
-             WHERE Id = @Id
+             WHERE UserId = @Id
                AND CreatedBy = @CreatedBy;
-        ";
-
-        public const string EXISTS_EMAIL = @"
-            SELECT count(1) 
-              FROM bootstrap.User
-             WHERE Email = @Email;
-        ";
-
-        public const string EXISTS_SAME_EMAIL = @"
-            SELECT count(1) 
-              FROM bootstrap.User
-             WHERE Email = @Email
-               AND Id != @Id;
         ";
 
         public const string EXISTS_DOCUMENT = @"
             SELECT count(1) 
-              FROM bootstrap.User
+              FROM Usuario
              WHERE Document = @Document;
         ";
     }

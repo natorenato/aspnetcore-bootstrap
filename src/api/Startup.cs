@@ -20,11 +20,12 @@ using API.Configurations.Filters.Swashbuckle;
 using API.Configurations.Factories;
 using API.Configurations.Middlewares;
 using API.Domains.Services;
-using API.Domains.Validations;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 using API.Configurations.Filters.Newtonsoft;
+using API.Domains.Validators;
+using API.Domains.Repository;
 
 namespace API
 {
@@ -106,13 +107,19 @@ namespace API
             services.AddScoped<IDatabaseFactory, DatabaseFactory>();
 
             // Services
-            services.AddTransient<ISqlService, SqlService>();
+            //services.AddTransient<ISqlService, SqlService>();
             services.AddTransient<IUserService, UserService>();
+            services.AddTransient<IContactService, ContactService>();
             services.AddTransient<IValidationService, ValidationService>();
             services.AddTransient<IAuthenticatedService, AuthenticatedService>();
 
+            //Repositories
+            services.AddTransient<SqlService, UserRepository>();
+
+
             // Validators
             services.AddSingleton<IValidator<User>, UserValidator>();
+            services.AddSingleton<IValidator<Contact>, ContactValidator>();
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         }
 
@@ -121,7 +128,14 @@ namespace API
             app.UseHsts();
 
             app.UseHealthChecks("/healthcheck");
-            
+
+            app.UseCors(configuration => configuration
+                .AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials()
+                .WithExposedHeaders("Content-Disposition"));
+
 #if (DEBUG)            
             app.UseSwagger();
 
@@ -135,7 +149,7 @@ namespace API
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
             app.UseMiddleware<TransactionMiddleware>();
-            app.UseMiddleware<AuthorizationMiddleware>();
+            //app.UseMiddleware<AuthorizationMiddleware>(); //middleware de autorização do login
             
             app.UseMvc();
         }

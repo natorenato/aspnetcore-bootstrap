@@ -19,10 +19,10 @@ namespace API.Domains.Services
         Task<string> ObtainAsync(string sql, object parameters);
     }
     
-    public class SqlService : ISqlService
+    public abstract class SqlService : ISqlService
     {
-        private readonly IDatabaseFactory _databaseFactory;
-        private readonly ILogger<SqlService> _logger;
+        protected readonly IDatabaseFactory _databaseFactory;
+        protected readonly ILogger<SqlService> _logger;
 
         public SqlService(IDatabaseFactory databaseFactory, ILogger<SqlService> logger)
         {
@@ -35,7 +35,7 @@ namespace API.Domains.Services
             _logger.LogDebug($"QUERY EXECUTE COMMAND | { sql }");
             _logger.LogDebug($"QUERY EXECUTE PARAMETERS | { parameters }");
 
-            var transaction = await _databaseFactory.BeginTransactionAsync();
+            var transaction = _databaseFactory.BeginTransactionAsync();
 
             var command = new CommandDefinition(sql, parameters, transaction);
 
@@ -49,7 +49,7 @@ namespace API.Domains.Services
             _logger.LogDebug($"QUERY CREATE COMMAND | { sql }");
             _logger.LogDebug($"QUERY CREATE PARAMETERS | { parameters }");
 
-            var transaction = await _databaseFactory.BeginTransactionAsync();
+            var transaction =  _databaseFactory.BeginTransactionAsync();
 
             var command = new CommandDefinition(sql, parameters, transaction);
 
@@ -65,23 +65,23 @@ namespace API.Domains.Services
             _logger.LogDebug($"QUERY LIST COMMAND | { sql }");
             _logger.LogDebug($"QUERY LIST PARAMETERS | { parameters }");
 
-            var transaction = await _databaseFactory.BeginTransactionAsync();
+            var transaction =  _databaseFactory.BeginTransactionAsync();
 
             var command = new CommandDefinition(sql, parameters, transaction);
 
-            var result = await _databaseFactory.Connection().QueryAsync<T>(command);    
+            var result = await _databaseFactory.Connection().QueryAsync<T>(command);
 
             _logger.LogDebug($"QUERY LIST EXECUTED");
 
             return result;
         }
-        
+
         public async Task<T> GetAsync<T>(string sql, object parameters)
         {
             _logger.LogDebug($"QUERY GET COMMAND | { sql }");
             _logger.LogDebug($"QUERY GET PARAMETERS | { parameters }");
 
-            var transaction = await _databaseFactory.BeginTransactionAsync();
+            var transaction =  _databaseFactory.BeginTransactionAsync();
 
             var command = new CommandDefinition(sql, parameters, transaction);
 
@@ -97,7 +97,7 @@ namespace API.Domains.Services
             _logger.LogDebug($"QUERY COUNT COMMAND | { sql }");
             _logger.LogDebug($"QUERY COUNT PARAMETERS | { parameters }");
 
-            var transaction = await _databaseFactory.BeginTransactionAsync();
+            var transaction =  _databaseFactory.BeginTransactionAsync();
 
             var command = new CommandDefinition(sql, parameters, transaction);
 
@@ -113,7 +113,7 @@ namespace API.Domains.Services
             _logger.LogDebug($"QUERY EXISTS COMMAND | { sql }");
             _logger.LogDebug($"QUERY EXISTS PARAMETERS | { parameters }");
 
-            var transaction = await _databaseFactory.BeginTransactionAsync();
+            var transaction =  _databaseFactory.BeginTransactionAsync();
 
             var command = new CommandDefinition(sql, parameters, transaction);
 
@@ -129,7 +129,7 @@ namespace API.Domains.Services
             _logger.LogDebug($"QUERY OBTAIN COMMAND | { sql }");
             _logger.LogDebug($"QUERY OBTAIN PARAMETERS | { parameters }");
 
-            var transaction = await _databaseFactory.BeginTransactionAsync();
+            var transaction =  _databaseFactory.BeginTransactionAsync();
 
             var command = new CommandDefinition(sql, parameters, transaction);
 
@@ -139,5 +139,7 @@ namespace API.Domains.Services
 
             return result;
         }
+
+        public abstract Task<IEnumerable<User>> ListUsersAsync(string sql, object parameters);
     }
 }

@@ -39,19 +39,21 @@ namespace API.Controllers
         }
 
         [HttpGet("{id}")]
-        [SwaggerOperation(
+        [SwaggerOperation
+            (
             Summary = "Retrieve a user by their ID",
             Description = "Retrieves user only if it were created by the authenticated user"
         )]
         [SwaggerResponse(200, "A user filtered by their ID", typeof(User))]
         public async Task<ActionResult> Get(
-            [SwaggerParameter("User's ID")]int id)
+            [SwaggerParameter("Users ID")]int id)
         {
             var user = await _userService.GetAsync(id);
 
             return Ok(user);
         }
-        
+
+
         [HttpPost]
         [SwaggerOperation(
             Summary = "Creates a new user",
@@ -63,7 +65,7 @@ namespace API.Controllers
         {
             var created = await _userService.CreateAsync(user);
 
-            return CreatedAtAction(nameof(Get), new { id = user.Id }, created);
+            return CreatedAtAction(nameof(Get), new { id = user.UserId }, created);
         }
         
         [HttpPut("{id}")]
@@ -92,7 +94,7 @@ namespace API.Controllers
         {
             await _userService.DeleteAsync(id);
 
-            return NoContent();
+            return Ok();
         }
 
         [HttpPut("{id}/activate")]
@@ -103,7 +105,7 @@ namespace API.Controllers
         {
             await _userService.ActivateDeactivateAsync(id, true);
 
-            return NoContent();
+            return Ok();
         }
 
         [HttpPut("{id}/deactivate")]
@@ -114,7 +116,7 @@ namespace API.Controllers
         {
             await _userService.ActivateDeactivateAsync(id, false);
 
-            return NoContent();
+            return Ok();
         }
     }
 }

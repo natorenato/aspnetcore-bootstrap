@@ -19,7 +19,7 @@ namespace API.Configurations.Middlewares
         {
             await databaseFactory.OpenConnectionAsync();
 
-            await databaseFactory.BeginTransactionAsync();   
+            databaseFactory.BeginTransactionAsync();   
             
             try
             {
